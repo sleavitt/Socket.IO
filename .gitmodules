@@ -1,0 +1,3 @@
+[submodule "lib/vendor/web-socket-js"]
+	path = lib/vendor/web-socket-js
+	url = http://github.com/sleavitt/web-socket-js.git
