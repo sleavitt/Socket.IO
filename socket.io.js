@@ -1318,26 +1318,14 @@ ASProxy.prototype =
   var console = window.console;
   if (!console) console = {log: function(){ }, error: function(){ }};
 
-  function hasFlash() {
-    if ('navigator' in window && 'plugins' in navigator && navigator.plugins['Shockwave Flash']) {
-      return !!navigator.plugins['Shockwave Flash'].description;
-    }
-    if ('ActiveXObject' in window) {
-      try {
-        return !!new ActiveXObject('ShockwaveFlash.ShockwaveFlash').GetVariable('$version');
-      } catch (e) {}
-    }
-    return false;
-  }
-  
-  if (!hasFlash()) {
+  if (!swfobject.hasFlashPlayerVersion("9.0.0")) {
     console.error("Flash Player is not installed.");
     return;
   }
-  console.log(location.protocol);
   if (location.protocol == "file:") {
     console.error(
-      "web-socket-js doesn't work in file:///... URL (without special configuration). " +
+      "WARNING: web-socket-js doesn't work in file:///... URL " +
+      "unless you set Flash Security Settings properly. " +
       "Open the page via Web server i.e. http://...");
   }
 
@@ -1421,6 +1409,12 @@ ASProxy.prototype =
     if (!this.__flash || this.readyState == WebSocket.CONNECTING) {
       throw "INVALID_STATE_ERR: Web Socket connection has not been established";
     }
+    // We use encodeURIComponent() here, because FABridge doesn't work if
+    // the argument includes some characters. We don't use escape() here
+    // because of this:
+    // https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Functions#escape_and_unescape_Functions
+    // But it looks decodeURIComponent(encodeURIComponent(s)) doesn't
+    // preserve all Unicode characters either e.g. "\uffff" in Firefox.
     var result = this.__flash.send(encodeURIComponent(data));
     if (result < 0) { // success
       return true;
@@ -1619,10 +1613,15 @@ ASProxy.prototype =
     var container = document.createElement("div");
     container.id = "webSocketContainer";
     // Puts the Flash out of the window. Note that we cannot use display: none or visibility: hidden
-    // here because it prevents Flash from loading at least in IE.
+    // here because it prevents Flash from loading at least in IE. Attempting to move it off-screen
+    // at all appears to fail on Android devices, so we'll initialize it in a 1x1 div at absolute
+    // 0, 0 with a z-index of -65535 instead.
     container.style.position = "absolute";
-    container.style.left = "-100px";
-    container.style.top = "-100px";
+    container.style.left = "0px";
+    container.style.top = "0px";
+    container.style.width = "1px";
+    container.style.height = "1px";
+    container.style.zIndex = -65535;
     var holder = document.createElement("div");
     holder.id = "webSocketFlash";
     container.appendChild(holder);
